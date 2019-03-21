@@ -34,7 +34,7 @@ const lmic_pinmap lmic_pins = {
 void do_send(osjob_t *j)
 {
   // Payload to send (uplink)
-  static uint8_t message[] = "Hello OTAA!";
+  String message = String("{\"data\": ") + counter + "}";
 
   // Check if there is not a current TX/RX job running
   if (LMIC.opmode & OP_TXRXPEND)
@@ -43,8 +43,11 @@ void do_send(osjob_t *j)
   }
   else
   {
+    char buffer[64];
+    strcpy(buffer, message.c_str());
+    Serial.println(buffer);
     // Prepare upstream data transmission at the next possible time.
-    LMIC_setTxData2(1, message, sizeof(message) - 1, 0);
+    LMIC_setTxData2(1, (uint8_t *)buffer, message.length(), 0);
     Serial.println(F("Sending uplink packet..."));
     digitalWrite(LEDPIN, HIGH);
     // display.clear();
