@@ -8,19 +8,10 @@
 #include <hal/hal.h>
 #include <SPI.h>
 #include "config.h"
-// #include <SSD1306.h>
-
 #define LEDPIN 2
-
-// #define OLED_I2C_ADDR 0x3C
-// #define OLED_RESET 16
-// #define OLED_SDA 4
-// #define OLED_SCL 15
 
 unsigned int counter = 0;
 char TTN_response[30];
-
-// SSD1306 display(OLED_I2C_ADDR, OLED_SDA, OLED_SCL);
 
 void os_getArtEui(u1_t *buf) { memcpy_P(buf, APPEUI, 8); }
 void os_getDevEui(u1_t *buf) { memcpy_P(buf, DEVEUI, 8); }
@@ -93,13 +84,10 @@ void onEvent(ev_t ev)
     break;
   case EV_TXCOMPLETE:
     Serial.println(F("EV_TXCOMPLETE (includes waiting for RX windows)"));
-    // display.clear();
-    // display.drawString(0, 0, "EV_TXCOMPLETE event!");
 
     if (LMIC.txrxFlags & TXRX_ACK)
     {
       Serial.println(F("Received ack"));
-      // display.drawString(0, 20, "Received ACK.");
     }
 
     if (LMIC.dataLen)
@@ -110,35 +98,19 @@ void onEvent(ev_t ev)
       Serial.write(LMIC.frame + LMIC.dataBeg, LMIC.dataLen);
       Serial.println();
       Serial.println(LMIC.rssi);
-
-      // display.drawString(0, 9, "Received DATA.");
-      // for (i = 0; i < LMIC.dataLen; i++)
-      //   TTN_response[i] = LMIC.frame[LMIC.dataBeg + i];
-      // TTN_response[i] = 0;
-      // display.drawString(0, 22, String(TTN_response));
-      // display.drawString(0, 32, String(LMIC.rssi));
-      // display.drawString(64, 32, String(LMIC.snr));
     }
 
     // Schedule next transmission
-    // os_setTimedCallback(&sendjob, os_getTime() + sec2osticks(TX_INTERVAL), do_send);
     digitalWrite(LEDPIN, LOW);
-    // display.drawString(0, 50, String(counter));
-    // display.display();
     // Schedule next transmission
     os_setTimedCallback(&sendjob, os_getTime() + sec2osticks(TX_INTERVAL), do_send);
     break;
   case EV_JOINING:
     Serial.println(F("EV_JOINING: -> Joining..."));
-    // display.drawString(0, 16, "OTAA joining....");
-    // display.display();
     break;
   case EV_JOINED:
   {
     Serial.println(F("EV_JOINED"));
-    // display.clear();
-    // display.drawString(0, 0, "Joined!");
-    // display.display();
     // Disable link check validation (automatically enabled
     // during join, but not supported by TTN at this time).
     LMIC_setLinkCheckMode(0);
@@ -174,22 +146,6 @@ void setup()
 
   // Use the Blue pin to signal transmission.
   pinMode(LEDPIN, OUTPUT);
-
-  //Set up and reset the OLED
-  // pinMode(OLED_RESET, OUTPUT);
-  // digitalWrite(OLED_RESET, LOW);
-  // delay(50);
-  // digitalWrite(OLED_RESET, HIGH);
-
-  // display.init();
-  // display.flipScreenVertically();
-  // display.setFont(ArialMT_Plain_10);
-
-  // display.setTextAlignment(TEXT_ALIGN_LEFT);
-
-  // display.drawString(0, 0, "Starting....");
-  // display.display();
-
   // LMIC init
   os_init();
 
@@ -219,19 +175,19 @@ void setup()
   // frequency and support for class B is spotty and untested, so this
   // frequency is not configured here.
 
-  // Disable link check validation
-  LMIC_setLinkCheckMode(0);
+  // // Disable link check validation
+  // LMIC_setLinkCheckMode(0);
 
-  // TTN uses SF9 for its RX2 window.
-  LMIC.dn2Dr = DR_SF9;
+  // // TTN uses SF9 for its RX2 window.
+  // LMIC.dn2Dr = DR_SF11;
 
-  // Set data rate and transmit power for uplink (note: txpow seems to be ignored by the library)
-  //LMIC_setDrTxpow(DR_SF11,14);
-  LMIC_setDrTxpow(DR_SF9, 14);
+  // // Set data rate and transmit power for uplink (note: txpow seems to be ignored by the library)
+  // LMIC_setDrTxpow(DR_SF11, 14);
+  // // LMIC_setDrTxpow(DR_SF9, 14);
 
   // Start job
   do_send(&sendjob); // Will fire up also the join
-                     //LMIC_startJoining();
+  // LMIC_startJoining();
 }
 
 void loop()
