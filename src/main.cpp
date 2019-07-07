@@ -7,21 +7,31 @@
 #include "lmic.h"
 #include <hal/hal.h>
 #include <SPI.h>
+#include <SSD1306.h>
 #include "config.h"
+
 #define LEDPIN 2
+
+#define OLED_I2C_ADDR 0x3C
+#define OLED_RESET 16
+#define OLED_SDA 4
+#define OLED_SCL 15
 
 unsigned int counter = 0;
 char TTN_response[30];
+int rssi;
 
-void os_getArtEui(u1_t *buf) { memcpy_P(buf, APPEUI, 8); }
+SSD1306 display(OLED_I2C_ADDR, OLED_SDA, OLED_SCL);
+
 void os_getDevEui(u1_t *buf) { memcpy_P(buf, DEVEUI, 8); }
+void os_getArtEui(u1_t *buf) { memcpy_P(buf, APPEUI, 8); }
 void os_getDevKey(u1_t *buf) { memcpy_P(buf, APPKEY, 16); }
 
 static osjob_t sendjob;
 
 // Schedule TX every this many seconds (might become longer due to duty
 // cycle limitations).
-const unsigned TX_INTERVAL = 120;
+const unsigned TX_INTERVAL = 10;
 
 // Pin mapping
 const lmic_pinmap lmic_pins = {
@@ -34,7 +44,7 @@ const lmic_pinmap lmic_pins = {
 void do_send(osjob_t *j)
 {
   // Payload to send (uplink)
-  String message = String("{\"data\": ") + counter + "}";
+  static uint8_t message[] = {counter};
 
   // Check if there is not a current TX/RX job running
   if (LMIC.opmode & OP_TXRXPEND)
@@ -43,17 +53,18 @@ void do_send(osjob_t *j)
   }
   else
   {
-    char buffer[64];
-    strcpy(buffer, message.c_str());
-    Serial.println(buffer);
     // Prepare upstream data transmission at the next possible time.
-    LMIC_setTxData2(1, (uint8_t *)buffer, message.length(), 0);
+    LMIC_setTxData2(1, message, sizeof(message) - 1, 0);
     Serial.println(F("Sending uplink packet..."));
     digitalWrite(LEDPIN, HIGH);
-    // display.clear();
-    // display.drawString(0, 0, "Sending uplink packet...");
-    // display.drawString(0, 50, String(++counter));
-    // display.display();
+    display.clear();
+    display.drawString(0, 0, "Sending uplink packet...");
+        char string[20];
+    sprintf(string, "rssi: %d  ", rssi );
+
+    display.drawString(0, 25, String(string));
+    display.drawString(0, 50, String(++counter));
+    display.display();
   }
   // Next TX is scheduled after TX_COMPLETE event.
 }
@@ -92,15 +103,17 @@ void onEvent(ev_t ev)
     {
       Serial.println(F("Received ack"));
     }
+    rssi = LMIC.rssi - 125 + 64;
+
+    Serial.println(rssi);
 
     if (LMIC.dataLen)
     {
-      int i = 0;
       // data received in rx slot after tx
       Serial.print(F("Data Received: "));
       Serial.write(LMIC.frame + LMIC.dataBeg, LMIC.dataLen);
       Serial.println();
-      Serial.println(LMIC.rssi);
+      // Serial.println(LMIC.rssi);
     }
 
     // Schedule next transmission
@@ -149,6 +162,22 @@ void setup()
 
   // Use the Blue pin to signal transmission.
   pinMode(LEDPIN, OUTPUT);
+
+  //Set up and reset the OLED
+  pinMode(OLED_RESET, OUTPUT);
+  digitalWrite(OLED_RESET, LOW);
+  delay(50);
+  digitalWrite(OLED_RESET, HIGH);
+
+  display.init();
+  display.flipScreenVertically();
+  display.setFont(ArialMT_Plain_10);
+
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
+
+  display.drawString(0, 0, "Starting....");
+  display.display();
+
   // LMIC init
   os_init();
 
